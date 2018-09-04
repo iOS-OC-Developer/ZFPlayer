@@ -29,6 +29,7 @@
 #import <ZFPlayer/ZFPlayer.h>
 #else
 #import "ZFPlayer.h"
+#import "UIImageEffects.h"
 #endif
 
 /*!
@@ -234,7 +235,9 @@ static NSString *const kPresentationSize         = @"presentationSize";
         cgImage = [imageGenerator copyCGImageAtTime:expectedTime actualTime:NULL error:NULL];
     }
     
-    UIImage *image = [UIImage imageWithCGImage:cgImage];
+    UIImage *currentImage = [UIImage imageWithCGImage:cgImage];
+    UIImage *image = [UIImageEffects imageByApplyingBlurToImage:currentImage withRadius:60 tintColor:[UIColor colorWithWhite:0.84 alpha:0.36] saturationDeltaFactor:1.8 maskImage:nil];
+    CGImageRelease(cgImage);
     return image;
 }
 
@@ -350,6 +353,29 @@ static NSString *const kPresentationSize         = @"presentationSize";
             self->_currentTime = CMTimeGetSeconds(time);
             self->_totalTime = CMTimeGetSeconds(self.playerItem.duration);
             if (self.playerPlayTimeChanged) self.playerPlayTimeChanged(self, self.currentTime, self.totalTime);
+            //如果视频的宽大于高,是横屏就不模糊,竖屏就模糊,现在默认是两秒模糊一次,可以手动更改
+            if (self.width > 0 && self.height > 0) {
+                CGFloat videoRate = self.playerItem.presentationSize.width / self.playerItem.presentationSize.height;
+                CGFloat viewRate = self.width / self.height;
+                if (fabs(viewRate - videoRate) < 0.1) {
+                    return;
+                }
+            }
+            
+            if ((NSInteger)(self.currentTime) % 2) {
+                dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+                    UIImage *image = [self thumbnailImageAtCurrentTime];
+                    dispatch_async(dispatch_get_main_queue(), ^{
+                        self.view.layer.contents = (id)image.CGImage;
+                        [self.view.layer removeAllAnimations];
+                        CATransition *animation = [CATransition animation];
+                        animation.type = kCATransitionFade;
+                        animation.duration = 1.5;
+                        animation.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseOut];
+                        [self.view.layer addAnimation:animation forKey:@"Animation"];
+                    });
+                });
+            }
         }
     }];
     

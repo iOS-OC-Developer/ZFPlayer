@@ -26,5 +26,8 @@
 #import "ZFPlayerMediaPlayback.h"
 
 @interface ZFAVPlayerManager : NSObject <ZFPlayerMediaPlayback>
-
+//视频的宽
+@property (assign, nonatomic) CGFloat width;
+//视频的高
+@property (assign, nonatomic) CGFloat height;
 @end
